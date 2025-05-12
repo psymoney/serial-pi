@@ -1,0 +1,27 @@
+[project]
+name = "serial-pi"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Sangyeop Kim",email = "sangykimiv@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyserial (>=3.5,<4.0)",
+    "pyserial-asyncio (>=0.6,<0.7)"
+]
+
+[tool.poetry]
+packages = [
+  { include = "blocking-pi", from = "src" },
+  { include = "async-pi", from = "src"},
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.5"
+

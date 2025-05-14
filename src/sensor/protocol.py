@@ -21,6 +21,7 @@ TFMP_DEFAULT_ADDRESS = 0x10  # default I2C slave address
 # as hexidecimal integer
 #
 # System Error Status Condition
+#
 TFMP_READY = 0  # no error
 TFMP_SERIAL = 1  # serial timeout
 TFMP_HEADER = 2  # no header found
@@ -37,6 +38,9 @@ TFMP_FLOOD = 12  # Ambient Light saturation
 TFMP_MEASURE = 13
 
 
+HEADER = b"\x59\x59"
+
+
 class ProtocolException(Exception):
     status: int
 
@@ -48,20 +52,73 @@ class InvalidDataException(ProtocolException):
         self.status = status
 
 
-class LidarProtocol:
-    pass
+class TFMPSerial:
+    FLAG: bool = True
+    FRAME_SIZE: int = 9
+    HEADER: bytes = b"\x59\x59"
+    TIME_OUT: float = 1.0
 
+    def __init__(self, port, baudrate, header=None, frame_size=None):
+        self._serial = Serial(port, baudrate)
+        if frame_size:
+            self.FRAME_SIZE = frame_size
+        if header:
+            self.HEADER = header
 
-class Distance(int):
-    pass
+    def get_data(self):
+        frame = self.read_frames()
+        data = self.parse_frame(frame)
+        return data
 
+    def read_frames(self) -> bytes:
+        while True:
+            frame, status = self.read_frame()
+            if status == OK:
+                return frame
+            else:
+                print(f"{status=}, {self.FLAG=}")
+                continue
 
-class Temperature(int):
-    pass
+    def read_frame(self) -> tuple[bytes | None, int]:
+        deadline = time() + self.TIME_OUT
 
+        # Flush stale bytes except the last frame
+        if self._serial.in_waiting > TFMP_FRAME_SIZE:
+            self._serial.read(self._serial.in_waiting - TFMP_FRAME_SIZE)
 
-class SignalIntensity(int):
-    pass
+        while True:
+            if time() > deadline:
+                return None, TFMP_HEADER
+
+            if self._serial.in_waiting >= TFMP_FRAME_SIZE:
+                data = self._serial.read(TFMP_FRAME_SIZE)
+                if data[0:2] == HEADER:
+                    if sum(data[:8]) & 0xFF == data[8]:
+                        return data, TFMP_READY
+                    else:
+                        return None, TFMP_CHECKSUM
+                else:
+                    self._serial.read(1)  # Skip a byte
+            else:
+                sleep(0.001)
+
+    @staticmethod
+    def parse_frame(frame: bytes):
+        """Parse a valid 9-byte frame into dist, flux, temp, and status."""
+        dist = frame[2] | (frame[3] << 8)
+        flux = frame[4] | (frame[5] << 8)
+        temp_raw = frame[6] | (frame[7] << 8)
+        temp = (temp_raw >> 3) - 256
+
+        # Check for abnormal data
+        if dist == -1:
+            return dist, flux, temp, TFMP_WEAK
+        elif flux == -1:
+            return dist, flux, temp, TFMP_STRONG
+        elif dist == -4:
+            return dist, flux, temp, TFMP_FLOOD
+        else:
+            return dist, flux, temp, TFMP_READY
 
 
 class LidarData:
@@ -98,69 +155,6 @@ class LidarData:
         )
 
 
-pStream: Serial = None
-
-
-def read_frame(timeout: float = 1.0):
-    """Read one valid data frame from serial buffer."""
-    HEADER = b"\x59\x59"
-    deadline = time() + timeout
-
-    # Flush stale bytes except the last frame
-    if pStream.in_waiting > TFMP_FRAME_SIZE:
-        pStream.read(pStream.in_waiting - TFMP_FRAME_SIZE)
-
-    while True:
-        if time() > deadline:
-            return None, TFMP_HEADER
-
-        if pStream.in_waiting >= TFMP_FRAME_SIZE:
-            data = pStream.read(TFMP_FRAME_SIZE)
-            if data[0:2] == HEADER:
-                if sum(data[:8]) & 0xFF == data[8]:
-                    return data, TFMP_READY
-                else:
-                    return None, TFMP_CHECKSUM
-            else:
-                pStream.read(1)  # Skip a byte
-        else:
-            sleep(0.001)
-
-
-def parse_frame(frame: bytes):
-    """Parse a valid 9-byte frame into dist, flux, temp, and status."""
-    dist = frame[2] | (frame[3] << 8)
-    flux = frame[4] | (frame[5] << 8)
-    temp_raw = frame[6] | (frame[7] << 8)
-    temp = (temp_raw >> 3) - 256
-
-    # Check for abnormal data
-    if dist == -1:
-        return dist, flux, temp, TFMP_WEAK
-    elif flux == -1:
-        return dist, flux, temp, TFMP_STRONG
-    elif dist == -4:
-        return dist, flux, temp, TFMP_FLOOD
-    else:
-        return dist, flux, temp, TFMP_READY
-
-
-def read_frames():
-    while True:
-        frame, status = read_frame()
-        if status == OK:
-            yield frame
-        else:
-            continue
-
-
-def get_data():
-    for frame in read_frames():
-        if frame:
-            data = parse_frame(frame)
-            return data
-
-
 if __name__ == "__main__":
     a = LidarData(b"\x59\x59\x12\x03\x00\x00\x00\x00\xc7")
     print(f"{a=}")
@@ -170,12 +164,15 @@ if __name__ == "__main__":
     TIME_TO_PERFORM = 2
 
     with reader_from_virt_ser_pair() as r:
-        pStream = Serial(r, 9600, timeout=1)
+        lidar = TFMPSerial(r, 9600)
         count = 0
         start = time()
 
         while time() - start < TIME_TO_PERFORM:  # 2초 동안 읽기
-            data = get_data()
-            print(f"{data=}")
+            data = lidar.get_data()
+            count += 1
+            print(f"{count}: {data=}")
+        else:
+            lidar.FLAG = False
 
-        pStream.close()
+

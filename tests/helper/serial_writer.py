@@ -4,7 +4,7 @@ from serial import Serial
 
 
 port = sys.argv[1]
-interval = float(sys.argv[2]) if len(sys.argv) > 2 else 0.1
+interval = float(sys.argv[2]) if len(sys.argv) > 2 else 0.001
 
 with Serial(port, 9600) as serial:
     while True:

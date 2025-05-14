@@ -1,0 +1,18 @@
+from enum import Enum
+
+
+class Status(int, Enum):
+    OK = 0
+    ERR_CHECKSUM = 1
+    ERR_SERIAL = 2
+    ERR_CHECK_UPPER_LIMIT = 3
+    ERR_CHECK_LOWER_LIMIT = 4
+    ERR_DATA = 5
+
+
+OK = 0
+ERR_CHECKSUM = 1
+ERR_SERIAL = 2
+ERR_CHECK_UPPER_LIMIT = 3
+ERR_CHECK_LOWER_LIMIT = 4
+ERR_DATA = 5

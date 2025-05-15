@@ -27,7 +27,7 @@ def virtual_serial_ports():
 
     finally:
         proc.terminate()
-        proc.wait()
+        # proc.wait()
 
 
 @contextmanager

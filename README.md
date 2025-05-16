@@ -9,3 +9,7 @@ this is an experimental repository to test performances of blocking I/O and non-
 - [ ] dockerize entire project for easier reproduce
 - [ ] make more complicate test cases with multiple serial communications
 - [ ] replace python serial library with faster language one(e.g Rust)
+
+
+![img](./cpu_comparison.png)
+![img](./rss_comparison.png)

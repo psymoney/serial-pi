@@ -15,8 +15,8 @@ dependencies = [
 
 [tool.poetry]
 packages = [
-  { include = "blocking-pi", from = "src" },
-  { include = "async-pi", from = "src"},
+  { include = "blocking_pi", from = "src" },
+  { include = "async_pi", from = "src"},
 ]
 
 [build-system]

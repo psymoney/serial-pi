@@ -1,6 +1,6 @@
 import os
 import subprocess
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import DEVNULL, Popen, PIPE, STDOUT
 import time
 import re
 from contextlib import contextmanager
@@ -23,10 +23,11 @@ def wait_for_writer_ready(port: str, timeout: float = 3.0):
 
 @contextmanager
 def run_serial_writer(writer_port):
+    print('start serial writer')
     proc = subprocess.Popen(
         ["python3", "tests/helper/serial_writer.py", writer_port],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.PIPE,
     )
     try:
         wait_for_writer_ready(writer_port, timeout=2.0)
@@ -41,9 +42,9 @@ def run_serial_writer(writer_port):
 
 @contextmanager
 def run_async_reader(reader_port, interval: float = 0.01):
+    print("start async reader process")
     proc = subprocess.Popen(
-        ["python3", "-m", "tests.helper.async_reader",
-            reader_port, "-i", str(interval)]
+        ["python3", "-m", "tests.helper.async_reader", reader_port, "-i", str(interval)]
     )
     try:
         wait_for_writer_ready(reader_port, timeout=2.0)
@@ -58,6 +59,7 @@ def run_async_reader(reader_port, interval: float = 0.01):
 
 @contextmanager
 def run_blocking_reader(reader_port, interval: float = 0.01):
+    print("start blocking reader process")
     proc = subprocess.Popen(
         [
             "python3",
@@ -82,7 +84,7 @@ def run_metric_monitor(target_pid, test_id: str | None = None, type: str = "bloc
         test_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     file_name = type + "_metric.txt"
-
+    print("start monitor process")
     proc = subprocess.Popen(
         [
             "python3",
@@ -105,6 +107,7 @@ def run_metric_monitor(target_pid, test_id: str | None = None, type: str = "bloc
 
 @contextmanager
 def run_virtual_serial_pair() -> Iterator[tuple[Popen, str, str]]:
+    print("start virtual serial pair")
     # socat을 subprocess로 실행
     proc = Popen(
         ["socat", "-d", "-d", "PTY,raw,echo=0", "PTY,raw,echo=0"],
@@ -115,6 +118,8 @@ def run_virtual_serial_pair() -> Iterator[tuple[Popen, str, str]]:
 
     ports = []
     timeout = time.monotonic() + 5
+
+    assert proc.stdout is not None
 
     # socat은 포트 경로를 stderr가 아닌 stdout으로 출력함
     for line in proc.stdout:
@@ -127,7 +132,13 @@ def run_virtual_serial_pair() -> Iterator[tuple[Popen, str, str]]:
         if time.monotonic() > timeout:
             proc.terminate()
             raise RuntimeError("Timeout: socat did not create PTYs in time.")
+    print(f"socat pid={proc.pid}\nport0={ports[0]}\nport1={ports[1]}")
+    
     try:
+        # close logging pipe
+        # without this serial port does not work
+        # after some write operations
+        proc.stdout.close()
         yield proc, ports[0], ports[1]
     finally:
         proc.terminate()

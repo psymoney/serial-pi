@@ -1,4 +1,5 @@
 import asyncio
+import uvloop
 from src.async_pi.sensor import AsyncTFMPSerial
 
 
@@ -26,9 +27,10 @@ if __name__ == '__main__':
         "--interval",
         type=float,
         default=0.01,
-        help="Interval in seconds (default: 0.001)",
+        help="Interval in seconds (default: 0.01)",
     )
 
     args = parser.parse_args()
 
-    asyncio.run(main(args.interval))
+    uvloop.run(main(args.interval))
+    # asyncio.run(main(args.interval))

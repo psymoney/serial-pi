@@ -49,7 +49,11 @@ def plot_metric(title, ylabel, async_x, async_y, block_x, block_y, save_as=None)
     plt.close()
 
 
-def main(async_log, block_log):
+def main(id: str, async_path: str, blocking_path: str):
+    base_path = pathlib.Path(__file__).parent / "results"
+    async_log = base_path / id / async_path
+    block_log = base_path / id / blocking_path
+
     async_label, async_ts, async_cpu, async_rss = parse_log(async_log)
     block_label, block_ts, block_cpu, block_rss = parse_log(block_log)
     print(parse_log(async_log))
@@ -84,8 +88,4 @@ if __name__ == "__main__":
     parser.add_argument("--block_log", default="blocking_metric.txt")
     args = parser.parse_args()
 
-    base_path = pathlib.Path(__file__).parent / "results"
-    async_path = base_path / args.id / args.async_log
-    blocking_path = base_path / args.id / args.block_log
-
-    main(async_path, blocking_path)
+    main(args.id, args.async_log, args.block_log)

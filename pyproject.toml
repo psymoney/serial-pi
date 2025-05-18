@@ -10,7 +10,8 @@ requires-python = ">=3.10"
 dependencies = [
     "pyserial (>=3.5,<4.0)",
     "pyserial-asyncio (>=0.6,<0.7)",
-    "psutil (>=7.0.0,<8.0.0)"
+    "psutil (>=7.0.0,<8.0.0)",
+    "uvloop (>=0.21.0,<0.22.0)"
 ]
 
 [tool.poetry]

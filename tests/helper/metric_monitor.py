@@ -6,8 +6,8 @@ import json
 
 def monitor_pid(
     pid: int,
-    interval: float = 0.5,
-    duration: float = 10.0,
+    interval: float = 1.0,
+    duration: float = -1.0,
     output_file: str = "default.txt",
 ):
     try:
@@ -20,7 +20,7 @@ def monitor_pid(
     start = time.time()
     metrics = []
     with open(output_file, "a", encoding="utf-8") as f:
-        while time.time() - start < duration:
+        while duration < 0 or time.time() - start < duration:
             with p.oneshot():
                 cpu = p.cpu_percent(interval=None)
                 mem = p.memory_info().rss
@@ -51,10 +51,10 @@ if __name__ == "__main__":
         "-f", "--file", type=str, required=True, help="Output file name"
     )
     parser.add_argument(
-        "-i", "--interval", type=float, default=0.5, help="Sampling interval"
+        "-i", "--interval", type=float, default=1.0, help="Sampling interval"
     )
     parser.add_argument(
-        "-d", "--duration", type=float, default=10.0, help="Monitoring duration"
+        "-d", "--duration", type=float, default=-1.0, help="Monitoring duration"
     )
     args = parser.parse_args()
 

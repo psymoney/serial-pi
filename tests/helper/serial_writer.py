@@ -28,10 +28,12 @@ def serial_write(
                     serial.write(frame)
                     serial.flush()
                     time.sleep(interval)
-        except SerialTimeoutException:
+        except SerialTimeoutException as e:
             print("Write timed out")
+            raise e
         except Exception as e:
-            print('exception raised!', e)
+            print("exception raised!", e)
+            raise e
 
 
 if __name__ == "__main__":
@@ -55,7 +57,7 @@ if __name__ == "__main__":
         "-i",
         "--interval",
         type=float,
-        default=0.001,
+        default=0.01,
         help="Interval in seconds (default: 0.001)",
     )
     parser.add_argument(
@@ -66,5 +68,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    serial_write(args.port, args.baudrate, args.frame,
-                 args.interval, args.monotonic)
+    serial_write(args.port, args.baudrate, args.frame, args.interval, args.monotonic)

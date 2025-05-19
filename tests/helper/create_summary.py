@@ -48,7 +48,7 @@ def make_readme(readme_path, avg_cpu_dict, avg_rss_dict):
         "## 평균 사용량 (Average Usage)",
         "",
         "| Mode | Avg CPU (%) | Avg RSS (MB) |",
-        "|------|--------------|---------------|"
+        "|------|--------------|---------------|",
     ]
     for mode in sorted(avg_cpu_dict.keys()):
         cpu = f"{avg_cpu_dict[mode]:.2f}"
@@ -61,9 +61,9 @@ def make_readme(readme_path, avg_cpu_dict, avg_rss_dict):
 def main(
     id: str,
 ):
-    base_path = pathlib.Path(__file__).parent / "results" / id
+    base_path = pathlib.Path(__file__).parent.parent / "perf" / "results" / id
     img_dir = base_path / "img"
-    img_dir.mkdir(exist_ok=True)
+    img_dir.mkdir(parents=True, exist_ok=True)
 
     log_files = list(base_path.glob("*.log"))
 
@@ -79,8 +79,8 @@ def main(
         time[mode] = normalize_timestamps(timestamps)
         cpu[mode] = cpu_
         rss[mode] = rss_
-        avg_cpu[mode] = sum(cpu_) / len(cpu_) if cpu else 0.0
-        avg_rss[mode] = sum(rss_) / len(rss_) if cpu else 0.0
+        avg_cpu[mode] = sum(cpu_) / len(cpu_) if cpu_ else 0.0
+        avg_rss[mode] = sum(rss_) / len(rss_) if rss_ else 0.0
 
     if len(cpu) >= 2:
         plot_metric(

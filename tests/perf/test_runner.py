@@ -26,7 +26,7 @@ from tests.helper.subprocess_managers import (
 
 # test inputs
 intervals: list[float] = [0.01]
-runtimes: list[int] = [10]
+runtimes: list[int] = [5]
 loop: list = ["default", "uvloop"]
 
 combinations = list(product(intervals, runtimes))

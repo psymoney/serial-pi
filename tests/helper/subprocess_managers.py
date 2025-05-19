@@ -1,6 +1,6 @@
 import os
 import subprocess
-from subprocess import DEVNULL, Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT
 import time
 import re
 from contextlib import contextmanager
@@ -83,7 +83,7 @@ def run_metric_monitor(target_pid, test_id: str | None = None, type: str = "bloc
     if test_id is None:
         test_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    file_name = type + "_metric.txt"
+    file_name = type + ".log"
     print("start monitor process")
     proc = subprocess.Popen(
         [

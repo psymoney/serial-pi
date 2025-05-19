@@ -8,7 +8,7 @@ def monitor_pid(
     pid: int,
     interval: float = 1.0,
     duration: float = -1.0,
-    output_file: str = "default.txt",
+    output_file: str = "default.log",
 ):
     try:
         p = psutil.Process(pid)
@@ -16,7 +16,6 @@ def monitor_pid(
         print(f"Process {pid} does not exist.")
         return
 
-    # output_path = result_path / output_file
     start = time.time()
     metrics = []
     with open(output_file, "a", encoding="utf-8") as f:

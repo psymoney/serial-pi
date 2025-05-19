@@ -3,8 +3,8 @@ import subprocess
 from subprocess import Popen, PIPE, STDOUT
 import time
 import re
-from contextlib import contextmanager
-from typing import Iterator
+from contextlib import ExitStack, contextmanager
+from typing import Iterator, Generator
 from datetime import datetime
 
 
@@ -22,10 +22,45 @@ def wait_for_writer_ready(port: str, timeout: float = 3.0):
 
 
 @contextmanager
-def run_serial_writer(writer_port):
-    print('start serial writer')
+def run_serial_writers(
+    writer_ports: list[str], interval: float = 0.01
+) -> Generator[list[Popen], None, None]:
+    writers = []
+
+    with ExitStack() as stack:
+        for _, port in enumerate(writer_ports):
+            writer = stack.enter_context(run_serial_writer(port, interval=interval))
+            writers.append(writer)
+        yield writers
+
+
+@contextmanager
+def run_serial_writer(
+    writer_port,
+    baudrate: int = 9600,
+    frame: bytes = b"\x59\x59\x12\x03\x00\x00\x00\x00\xc7",
+    interval: float = 0.01,
+    monotonic: bool = False,
+):
+    print("start serial writer")
+
+    args = [
+        "python3",
+        "tests/helper/serial_writer.py",
+        writer_port,
+        "-b",
+        str(baudrate),
+        "-f",
+        frame.hex(),
+        "-i",
+        str(interval),
+    ]
+
+    if monotonic:
+        args.append("-m")
+
     proc = subprocess.Popen(
-        ["python3", "tests/helper/serial_writer.py", writer_port],
+        args,
         # stdout=subprocess.DEVNULL,
         # stderr=subprocess.PIPE,
     )
@@ -41,13 +76,21 @@ def run_serial_writer(writer_port):
 
 
 @contextmanager
-def run_async_reader(reader_port, interval: float = 0.01):
+def run_async_reader(*reader_ports, interval: float = 0.01):
     print("start async reader process")
     proc = subprocess.Popen(
-        ["python3", "-m", "tests.helper.async_reader", reader_port, "-i", str(interval)]
+        [
+            "python3",
+            "-m",
+            "tests.helper.async_reader",
+            *reader_ports,
+            "-i",
+            str(interval),
+        ]
     )
     try:
-        wait_for_writer_ready(reader_port, timeout=2.0)
+        for reader_port in reader_ports:
+            wait_for_writer_ready(reader_port, timeout=2.0)
         yield proc
     finally:
         proc.terminate()
@@ -58,24 +101,28 @@ def run_async_reader(reader_port, interval: float = 0.01):
 
 
 @contextmanager
-def run_blocking_reader(reader_port, interval: float = 0.01):
+def run_blocking_reader(*reader_ports, interval: float = 0.01):
     print("start blocking reader process")
     proc = subprocess.Popen(
         [
             "python3",
             "-m",
             "tests.helper.blocking_reader",
-            reader_port,
+            *reader_ports,
             "-i",
             str(interval),
         ]
     )
-    time.sleep(0.1)
-
-    yield proc
-
-    proc.terminate()
-    proc.wait()
+    try:
+        for reader_port in reader_ports:
+            wait_for_writer_ready(reader_port, timeout=2.0)
+        yield proc
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
 
 
 @contextmanager
@@ -106,6 +153,19 @@ def run_metric_monitor(target_pid, test_id: str | None = None, type: str = "bloc
 
 
 @contextmanager
+def run_virtual_serial_pairs(
+    count: int,
+) -> Generator[list[tuple[Popen, str, str]], None, None]:
+    pairs = []
+
+    with ExitStack() as stack:
+        for i in range(count):
+            pair = stack.enter_context(run_virtual_serial_pair())
+            pairs.append(pair)
+        yield pairs
+
+
+@contextmanager
 def run_virtual_serial_pair() -> Iterator[tuple[Popen, str, str]]:
     print("start virtual serial pair")
     # socat을 subprocess로 실행
@@ -133,7 +193,7 @@ def run_virtual_serial_pair() -> Iterator[tuple[Popen, str, str]]:
             proc.terminate()
             raise RuntimeError("Timeout: socat did not create PTYs in time.")
     print(f"socat pid={proc.pid}\nport0={ports[0]}\nport1={ports[1]}")
-    
+
     try:
         # close logging pipe
         # without this serial port does not work

@@ -23,14 +23,18 @@ def monitor_pid(
             with p.oneshot():
                 cpu = p.cpu_percent(interval=None)
                 mem = p.memory_info().rss
-                # io = p.io_counters()
+                io = p.io_counters()
+                threads = p.num_threads()
 
             data = {
                 "timestamp": time.time(),
                 "cpu_percent": cpu,
                 "memory_rss": mem,
-                # "read_bytes": io.read_bytes,
-                # "write_bytes": io.write_bytes,
+                "read_counts": io.read_count,
+                "write_counts": io.write_count,
+                "read_bytes": io.read_bytes,
+                "write_bytes": io.write_bytes,
+                "num_threads": threads,
             }
             metrics.append(data)
             f.write(json.dumps(data) + "\n")
@@ -42,10 +46,8 @@ if __name__ == "__main__":
     from pathlib import Path
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--pid", type=int,
-                        required=True, help="PID to monitor")
-    parser.add_argument("--id", type=str, required=True,
-                        help="Output file name")
+    parser.add_argument("-p", "--pid", type=int, required=True, help="PID to monitor")
+    parser.add_argument("--id", type=str, required=True, help="Output file name")
     parser.add_argument(
         "-f", "--file", type=str, required=True, help="Output file name"
     )

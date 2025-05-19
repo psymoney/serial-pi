@@ -6,7 +6,7 @@ def serial_write(
     port: str,
     baudrate: int = 9600,
     frame: bytes = b"\x59\x59\x12\x03\x00\x00\x00\x00\xc7",
-    interval: float = 0.001,
+    interval: float = 0.01,
     use_monotonic: bool = False,
 ):
     with Serial(port, baudrate, timeout=1) as serial:
